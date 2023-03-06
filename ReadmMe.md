@@ -20,3 +20,8 @@ error: src refspec main does not match any.
 
 # Password (token was giving error because when it was pasted, it was changed!!!!!!)
 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
+
+# save credentials 
+git config --global credential.helper store
+git pull
+then after git push and inserting, it will be saved!
