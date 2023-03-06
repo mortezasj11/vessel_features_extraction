@@ -19,7 +19,8 @@ git push -u origin main
 error: src refspec main does not match any.
 
 # Password (token was giving error because when it was pasted, it was changed!!!!!!)
-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
+
+ghp_C7   jJA8mw  WUIGS  y6e  MN  u  AET  tw5  SWP  kI47  ZaYF
 
 # save credentials 
 git config --global credential.helper store
