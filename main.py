@@ -76,12 +76,26 @@ class ExtractVesselFeatures:
             mask_dilate = mask_dist2 <= outer_num
             mask_dilate = mask_dilate * 1
             tumor_outer[:, :, k] = mask_dilate
-
         tumor_outer = tumor_outer - self.tumor_array
+
+        sum_vec0 = self.tumor_array.sum(2).sum(1)   # 1D, gives the number of non-zero pixels in each slide, [ 0,   0,   0, 141, 190, 228, 0, 0]
+        sele_idx0 = np.nonzero(sum_vec0) 
+        for k0 in sele_idx0[0]:
+            tumor_2D0 = self.tumor_array[k0,:,:] * 1
+            tumor_2D0 = tumor_2D0.astype(np.uint8)
+            mask_dist0 = distance_transform_edt(tumor_2D0)  #(512, 512)  #computes the distance from non-zero (i.e. non-background) points to the nearest zero (i.e. background) point.
+            max_dist0 = np.amax(mask_dist0)
+            mask_erode0 = mask_dist0 > (max_dist0/2)   # they are far from background in the tumor #https://stackoverflow.com/questions/44770396/how-does-the-scipy-distance-transform-edt-function-work
+            mask_dist2_0 = distance_transform_edt(1-tumor_2D0)
+            mask_dilate0 = mask_dist2_0 <= outer_num
+            tumor_outer0[k0, :, :] = mask_dilate0
+        tumor_outer0 = tumor_outer0 - self.tumor_array
+
+        tumor_outer_combined = np.logical_or(tumor_outer, tumor_outer0)
         lung_tumor = np.logical_or(self.tumor_array, self.lung_array)
-        self.tumor_outer = np.logical_and(lung_tumor, tumor_outer)
+        self.tumor_outer = np.logical_and(lung_tumor, tumor_outer_combined)
         chl = sele_idx[0][sele_idx[0].shape[0]//2]
-        return tumor_core, tumor_inner, tumor_outer, chl
+        return tumor_core, tumor_inner, tumor_outer_combined, chl
     
     def skeletonize_vessel(self, img, method='lee'):
         if method=='lee':
