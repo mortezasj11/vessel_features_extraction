@@ -27,33 +27,43 @@ class ExtractVesselFeatures:
         assert self.ct_array.shape==self.vessel_seg_array.shape, "ct and vessel have diff shapes"
         #Obtain lung & vessels_only & dimension
         self.lung_array = self.obtain_lung_seg() if path_lung_seg == None else nib.load(path_lung_seg).get_fdata()
-        self.vessel_array = self.obtain_vessel()
         self.dimension_orig = np.diag(np.abs(self.ct_affine))[0:3]
-        
+        self.vessel_array = self.obtain_vessel()# Should be here not after resize not before lung !
+
         if resize_111:
             print('Resizing to 111 spacing', )
+            # the main diogonal starts with +-[1, 1, 1]
             for i in range(3): # Should be defined here before it is used for saving 
                 self.ct_affine[i][i] = self.ct_affine[i][i]/abs(self.ct_affine[i][i])
             self.ct_array     = self.resize_1mm(self.ct_array, save_nii = os.path.join(resize_111, os.path.basename(path_ct[:-7])+'_ct_111.nii.gz'))
             self.lung_array   = self.resize_1mm(self.lung_array, save_nii = os.path.join(resize_111, os.path.basename(path_ct[:-7])+'_lung_111.nii.gz'))
             self.tumor_array  = self.resize_1mm(self.tumor_array, save_nii = os.path.join(resize_111, os.path.basename(path_ct[:-7])+'_tumor_111.nii.gz'))
-            self.vessel_seg_array = self.resize_1mm(self.vessel_seg_array,save_nii = os.path.join(resize_111, os.path.basename(path_ct[:-7])+'_vessel_seg_111.nii.gz'))
+            self.vessel_path = os.path.join(resize_111, os.path.basename(path_ct[:-7])+'_vessel.nii.gz') # Should be corrected later
+            self.vessel_array = self.resize_1mm(self.vessel_array,save_nii = self.vessel_path)
+            #self.vessel_seg_array = self.resize_1mm(self.vessel_seg_array,save_nii = os.path.join(resize_111, os.path.basename(path_ct[:-7])+'_vessel_seg_111.nii.gz'))
+            self.vessel_seg_array = self.obtain_vessel_seg_array()
             self.dimension = [1,1,1]
             # the main diogonal starts with +-[1, 1, 1]
 
-        self.vessel_array = self.obtain_vessel() # should be here after resize so that self.ct_array is updated
         self.tumor_core, self.tumor_inner, self.tumor_outer, self.chl_tumor = self.calculate_core_inner_outer()
         if show_check:
             os.makedirs('savefig', exist_ok=True)
             self.show_check()
             self.show_check_tumor(self.chl_tumor)
-        
+
+    def obtain_vessel_seg_array(self):
+        vessel_seg_array = np.clip(self.vessel_array , self.min_v, self.max_v)
+        vessel_seg_array = vessel_seg_array - self.min_v
+        vessel_seg_array[vessel_seg_array != 0] = 1
+        vessel_seg_array = vessel_seg_array.astype(np.uint8)
+        return vessel_seg_array
+
     def resize_1mm(self, array_3d, save_nii = False): 
         array_3d = array_3d.astype(np.float32)
         phy = array_3d.shape*self.dimension_orig    # physical size
         iso = 1 # isotropic voxel
         new_size = np.round(phy/iso)   # new resampling size after interpolation 
-        array_3d_interp = resize(array_3d, (new_size[0],new_size[1],new_size[2]), order=0, preserve_range=True)
+        array_3d_interp = resize(array_3d, (new_size[0],new_size[1],new_size[2]), order=1, preserve_range=True)
         pixel_dim = np.round(phy/new_size)
         if save_nii:
             array_interp_NIFTI = nib.Nifti1Image(array_3d_interp, self.ct_affine)
@@ -182,13 +192,13 @@ class ExtractVesselFeatures:
         print('saving outer tumor & vessel in', save_folder)
         #Let's have both with the same ct.affine here
         os.makedirs(save_folder, exist_ok=True)
-        vessel_NIFTI = nib.Nifti1Image(self.vessel_array, self.ct_affine)
-        vessel_path = os.path.join(save_folder, os.path.basename(path_ct[:-7])+'_vessel.nii.gz')
-        vessel_NIFTI.to_filename(vessel_path)
+        #vessel_NIFTI = nib.Nifti1Image(self.vessel_array, self.ct_affine)
+        #vessel_path = os.path.join(save_folder, os.path.basename(path_ct[:-7])+'_vessel.nii.gz')
+        #vessel_NIFTI.to_filename(vessel_path)
         outer_NIFTI = nib.Nifti1Image(self.tumor_outer, self.ct_affine)
         outer_path = os.path.join(save_folder, os.path.basename(path_ct[:-7])+'_tumor_outer_seg.nii.gz')
         outer_NIFTI.to_filename(outer_path)
-        return outer_path, vessel_path
+        return outer_path , self.vessel_path
         
         
     def radiomic_features(self, path_vesel, path_tumor_outer_seg , only_first_order = True):
