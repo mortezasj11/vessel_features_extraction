@@ -58,6 +58,8 @@ class ExtractVesselFeatures:
         tumor_core = np.empty(self.tumor_array.shape)
         tumor_inner = np.empty(self.tumor_array.shape)
         tumor_outer = np.empty(self.tumor_array.shape)
+        tumor_outer0 = np.empty(self.tumor_array.shape)
+        tumor_outer1 = np.empty(self.tumor_array.shape)
         
         outer_num = np.round(outer_dist/img_resolution)
         # loop through the nonzero slices
@@ -78,22 +80,30 @@ class ExtractVesselFeatures:
             tumor_outer[:, :, k] = mask_dilate
         tumor_outer = tumor_outer - self.tumor_array
 
-        sum_vec0 = self.tumor_array.sum(2).sum(1)   # 1D, gives the number of non-zero pixels in each slide, [ 0,   0,   0, 141, 190, 228, 0, 0]
+        sum_vec0 = self.tumor_array.sum(2).sum(1)
         sele_idx0 = np.nonzero(sum_vec0) 
         for k0 in sele_idx0[0]:
             tumor_2D0 = self.tumor_array[k0,:,:] * 1
             tumor_2D0 = tumor_2D0.astype(np.uint8)
-            mask_dist0 = distance_transform_edt(tumor_2D0)  #(512, 512)  #computes the distance from non-zero (i.e. non-background) points to the nearest zero (i.e. background) point.
-            max_dist0 = np.amax(mask_dist0)
-            mask_erode0 = mask_dist0 > (max_dist0/2)   # they are far from background in the tumor #https://stackoverflow.com/questions/44770396/how-does-the-scipy-distance-transform-edt-function-work
             mask_dist2_0 = distance_transform_edt(1-tumor_2D0)
             mask_dilate0 = mask_dist2_0 <= outer_num
             tumor_outer0[k0, :, :] = mask_dilate0
         tumor_outer0 = tumor_outer0 - self.tumor_array
 
-        tumor_outer_combined = np.logical_or(tumor_outer, tumor_outer0)
+        sum_vec1 = self.tumor_array.sum(2).sum(0)
+        sele_idx1 = np.nonzero(sum_vec1) 
+        for k1 in sele_idx1[0]:
+            tumor_2D1 = self.tumor_array[:,k1,:] * 1
+            tumor_2D1 = tumor_2D1.astype(np.uint8)
+            mask_dist2_1 = distance_transform_edt(1-tumor_2D1)
+            mask_dilate1 = mask_dist2_1 <= outer_num
+            tumor_outer1[:,k1, :] = mask_dilate1
+        tumor_outer1 = tumor_outer1 - self.tumor_array
+        
+        tumor_outer_20 = np.logical_or(tumor_outer, tumor_outer0)
+        tumor_outer_combined = np.logical_or(tumor_outer_20, tumor_outer1)
         lung_tumor = np.logical_or(self.tumor_array, self.lung_array)
-        self.tumor_outer = np.logical_and(lung_tumor, tumor_outer_combined)
+        tumor_outer_combined = np.logical_and(lung_tumor, tumor_outer_combined).astype(np.uint8)
         chl = sele_idx[0][sele_idx[0].shape[0]//2]
         return tumor_core, tumor_inner, tumor_outer_combined, chl
     
@@ -167,7 +177,6 @@ class ExtractVesselFeatures:
         vessel_NIFTI = nib.Nifti1Image(self.vessel_array, self.ct.affine)
         vessel_path = os.path.join(save_folder, os.path.basename(path_ct[:-7])+'_vessel.nii.gz')
         vessel_NIFTI.to_filename(vessel_path)
-
         outer_NIFTI = nib.Nifti1Image(self.tumor_outer, self.ct.affine)
         outer_path = os.path.join(save_folder, os.path.basename(path_ct[:-7])+'_tumor_outer_seg.nii.gz')
         outer_NIFTI.to_filename(outer_path)
@@ -196,6 +205,7 @@ save_img_matching = True
 if __name__=='__main__':
     results = []
     for ct_file_name in os.listdir(path_ct_folder):
+        print(os.listdir(path_ct_folder))
         if 'RTS' not in ct_file_name:
             path_ct = os.path.join(path_ct_folder, ct_file_name)
             path_t = os.path.join(path_ct_folder, ct_file_name[:-7] + '_RTS_L1.nii.gz')
