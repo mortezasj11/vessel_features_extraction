@@ -13,7 +13,7 @@ import SimpleITK as sitk
 from radiomics import featureextractor
 
 class ExtractVesselFeatures:
-    def __init__(self, path_ct, path_tumor_seg, path_vessel_seg, path_lung_seg=None, show_check=False, resize_111=None):
+    def __init__(self, path_ct, path_tumor_seg, path_vessel_seg, path_lung_seg=None, show_check=False, resize_111=None, outer_dist=5):
         self.min_v, self.max_v = -1000, 100
         # paths
         self.path_ct = path_ct
@@ -45,7 +45,7 @@ class ExtractVesselFeatures:
             self.dimension = [1,1,1]
             # the main diogonal starts with +-[1, 1, 1]
 
-        self.tumor_core, self.tumor_inner, self.tumor_outer, self.chl_tumor = self.calculate_core_inner_outer()
+        self.tumor_core, self.tumor_inner, self.tumor_outer, self.chl_tumor = self.calculate_core_inner_outer(outer_dist=10)
         if show_check:
             os.makedirs('savefig', exist_ok=True)
             self.show_check()
@@ -138,6 +138,9 @@ class ExtractVesselFeatures:
         #import SimpleITK as sitk
         input_image = sitk.ReadImage(self.path_ct)
         segmentation = mask.apply(input_image)
+        model = mask.get_model('unet','LTRCLobes')
+        segmentation_m = mask.apply(input_image, model)
+        segmentation = np.logical_or(segmentation_m, segmentation)
         segmentation[segmentation!=0] = 1
         segmentation = np.transpose(segmentation,[1,2,0])
         for i in range(segmentation.shape[2]):
@@ -217,6 +220,8 @@ path_ct_folder = '/Code/ct_tumor_files/'                            #Exp: 0001_4
 path_t_folder  = '/Code/ct_tumor_files/'                            #Exp: 0001_414826_170323_RTS_L1.nii.gz   
 path_v_folder  = '/Code/vessel_files/'   # MATLAB Output folder     #Exp: 0001_414826_170323_v.nii.gz        
 
+outer_dist = 5  # distance in mm 
+
 only_first_order_features = False
 save_img_matching = True
 
@@ -232,7 +237,7 @@ if __name__=='__main__':
         
         resize_111 = '/Code/outer_tumor_and_vessel'
         # create instance
-        case_i = ExtractVesselFeatures(path_ct,path_t,path_v, show_check=save_img_matching, resize_111=resize_111)
+        case_i = ExtractVesselFeatures(path_ct,path_t,path_v, show_check=save_img_matching, resize_111=resize_111, outer_dist=outer_dist)
         #save outer_tumor and vessel
         path_outer_tumor_and_vessel = '/Code/outer_tumor_and_vessel'
         path_tumor_outer_seg, path_vesel = case_i.saving_outer_tumor_and_vessel(save_folder = path_outer_tumor_and_vessel)

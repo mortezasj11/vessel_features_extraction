@@ -1,5 +1,9 @@
 
 outer_tumor_and_vessel/
+ct_tumor_files/
+savefig
+vessel_files/
+vessel_files/*.png
 ct_tumor_files/0001_414826_180322.nii.gz
 ct_tumor_files/0001_414826_180322_RTS_L1.nii.gz
 ct_tumor_files/0001_414826_190328.nii.gz
@@ -7,5 +11,4 @@ ct_tumor_files/0001_414826_190328_RTS_L1.nii.gz
 ct_tumor_files/0001_414826_180322.nii.gz
 ct_tumor_files/0001_414826_180322_RTS_L1.nii.gz
 notes.pptx
-vessel_files/*.png
-savefig
+
