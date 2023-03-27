@@ -1,8 +1,9 @@
 
 outer_tumor_and_vessel/
 ct_tumor_files/
-savefig
+savefig/
 vessel_files/
+lung_seg/
 vessel_files/*.png
 ct_tumor_files/0001_414826_180322.nii.gz
 ct_tumor_files/0001_414826_180322_RTS_L1.nii.gz
