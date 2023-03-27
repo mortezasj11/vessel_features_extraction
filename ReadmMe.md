@@ -1,10 +1,9 @@
 
 
 
-docker run -it --rm --gpus all --shm-size=192G --user $(id -u):$(id -g) --cpuset-cpus=50-74 \
+docker run -it --rm --gpus all --shm-size=192G --user $(id -u):$(id -g) --cpuset-cpus=200-250 \
 -v /rsrch1/ip/msalehjahromi/codes/vesselFeatureExtraction/2_Python_extract_radiomic_features:/Code \
--v /rsrch7/wulab/Mori:/Data \
---name mori1 simplelung:Mori
+--name sheeba simplelung:Mori
 
 
 
